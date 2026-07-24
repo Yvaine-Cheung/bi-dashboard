@@ -33,10 +33,11 @@ const UNPACK_PACK_SHEET = {
     headerRow: 1
 };
 
-// 解析CSV行（正确处理多行字段）
-function parseCSVLines(csvText) {
+// 解析CSV行（使用row编号正确重组多行字段）
+function parseCSVWithRowNumbers(csvText) {
     const rows = [];
-    let currentRow = [];
+    let currentRowNum = null;
+    let currentRowData = [];
     let currentField = '';
     let inQuotes = false;
     let i = 0;
@@ -45,36 +46,45 @@ function parseCSVLines(csvText) {
         const char = csvText[i];
         const nextChar = csvText[i + 1];
         
+        // 检查是否是行号标记 [row=N]
+        if (char === '[' && csvText.substring(i, i + 5) === '[row=') {
+            // 保存之前的行
+            if (currentRowNum !== null && (currentField || currentRowData.length > 0)) {
+                currentRowData.push(currentField.trim());
+                rows.push({ rowNum: currentRowNum, data: currentRowData });
+            }
+            
+            // 提取行号
+            const endBracket = csvText.indexOf(']', i);
+            if (endBracket > i) {
+                currentRowNum = parseInt(csvText.substring(i + 5, endBracket));
+                currentRowData = [];
+                currentField = '';
+                i = endBracket + 1;
+                // 跳过可能的空格
+                while (i < csvText.length && csvText[i] === ' ') i++;
+                continue;
+            }
+        }
+        
         if (char === '"') {
             if (inQuotes && nextChar === '"') {
-                // 转义的引号
                 currentField += '"';
                 i += 2;
             } else {
-                // 切换引号状态
                 inQuotes = !inQuotes;
                 i++;
             }
         } else if (char === ',' && !inQuotes) {
-            // 字段分隔符
-            currentRow.push(currentField.trim());
+            currentRowData.push(currentField.trim());
             currentField = '';
             i++;
         } else if ((char === '\n' || char === '\r') && !inQuotes) {
-            // 行分隔符
+            // 行内换行符（不在引号内），跳过
             if (char === '\r' && nextChar === '\n') {
                 i += 2;
             } else {
                 i++;
-            }
-            
-            if (currentField || currentRow.length > 0) {
-                currentRow.push(currentField.trim());
-                if (currentRow.length > 1 || currentRow[0]) {
-                    rows.push(currentRow);
-                }
-                currentRow = [];
-                currentField = '';
             }
         } else {
             currentField += char;
@@ -82,12 +92,10 @@ function parseCSVLines(csvText) {
         }
     }
     
-    // 处理最后一行
-    if (currentField || currentRow.length > 0) {
-        currentRow.push(currentField.trim());
-        if (currentRow.length > 1 || currentRow[0]) {
-            rows.push(currentRow);
-        }
+    // 保存最后一行
+    if (currentRowNum !== null && (currentField || currentRowData.length > 0)) {
+        currentRowData.push(currentField.trim());
+        rows.push({ rowNum: currentRowNum, data: currentRowData });
     }
     
     return rows;
@@ -99,7 +107,7 @@ function readSheetData(sheet, nodeId) {
     console.log(`\n正在读取: ${sheet.name} (共 ${sheet.lastRow} 行, 表头行: ${sheet.headerRow})...`);
     
     const allRows = [];
-    const batchSize = 200;  // 减小批次大小以确保数据完整性
+    const batchSize = 100;  // 使用更小的批次以确保数据完整性
     let startRow = 1;
     let headers = null;
     
@@ -115,14 +123,10 @@ function readSheetData(sheet, nodeId) {
             const result = JSON.parse(output);
             
             if (result.success && result.csv) {
-                // 移除行号前缀，保留原始CSV内容
-                const csvContent = result.csv.replace(/^\[row=\d+\]\s*/gm, '');
-                const rows = parseCSVLines(csvContent);
+                // 使用新的解析函数，正确处理多行字段
+                const parsedRows = parseCSVWithRowNumbers(result.csv);
                 
-                for (let i = 0; i < rows.length; i++) {
-                    const parsed = rows[i];
-                    const rowNum = i + 1; // 行号从1开始
-                    
+                for (const { rowNum, data: parsed } of parsedRows) {
                     // 表头行
                     if (rowNum === sheet.headerRow) {
                         headers = parsed;
