@@ -154,19 +154,33 @@ function extractYearFromOrderNo(orderNo) {
 function preprocessUnpackData(data) {
     if (!data || data.length === 0) return [];
     
-    let currentYear = 2025; // 数据从2025年7月开始
+    // 找到第一个有日期的行，确定起始年份
+    let startYear = 2025;
+    for (const row of data) {
+        const dateStr = row[0];
+        if (dateStr) {
+            const match = dateStr.match(/(\d{1,2})\s*月\s*(\d{1,2})\s*日/);
+            if (match) {
+                const month = parseInt(match[1]);
+                startYear = month >= 7 ? 2025 : 2026;
+                break;
+            }
+        }
+    }
+    
+    let currentYear = startYear;
     let lastMonth = 0;
     
     return data.map(row => {
         const dateStr = row[0];
         if (!dateStr) return { ...row, year: currentYear, month: 0, day: 0 };
         
-        const match = dateStr.match(/(\d{1,2})月(\d{1,2})日/);
+        const match = dateStr.match(/(\d{1,2})\s*月\s*(\d{1,2})\s*日/);
         if (match) {
             const month = parseInt(match[1]);
             const day = parseInt(match[2]);
             
-            // 检测跨年：月份从12跳到1时，年份+1
+            // 检测跨年：月份从 12 跳到 1 时，年份 +1
             if (lastMonth === 12 && month === 1) {
                 currentYear++;
             }
