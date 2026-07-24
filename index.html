@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>设备售后BI数据面板</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/date-fns@3.0.0/date-fns.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background: #f5f7fa; }
+        .tab-btn { transition: all 0.3s; }
+        .tab-btn.active { background: #3b82f6; color: white; }
+        .card { background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 20px; margin-bottom: 20px; }
+        .metric-card { text-align: center; padding: 24px; }
+        .metric-value { font-size: 32px; font-weight: bold; color: #1e40af; }
+        .metric-label { font-size: 14px; color: #6b7280; margin-top: 8px; }
+        .chart-container { position: relative; height: 300px; }
+        .date-filter { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+        .date-btn { padding: 6px 12px; border: 1px solid #d1d5db; border-radius: 6px; cursor: pointer; transition: all 0.2s; }
+        .date-btn:hover { background: #f3f4f6; }
+        .date-btn.active { background: #3b82f6; color: white; border-color: #3b82f6; }
+        .warning-badge { background: #fef3c7; color: #92400e; padding: 4px 8px; border-radius: 4px; font-size: 12px; }
+        .alert-badge { background: #fee2e2; color: #991b1b; padding: 4px 8px; border-radius: 4px; font-size: 12px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #e5e7eb; }
+        th { background: #f9fafb; font-weight: 600; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+    </style>
+</head>
+<body>
+    <div class="container mx-auto px-4 py-8 max-w-7xl">
+        <!-- 标题 -->
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold text-gray-800">设备售后BI数据面板</h1>
+            <p class="text-gray-500 mt-2">最后更新: <span id="lastSync">加载中...</span></p>
+        </div>
+
+        <!-- 标签页导航 -->
+        <div class="flex gap-2 mb-6 flex-wrap">
+            <button class="tab-btn active px-4 py-2 rounded-lg font-medium" data-tab="tab1">仓库&质检移交设备</button>
+            <button class="tab-btn px-4 py-2 rounded-lg font-medium bg-gray-200" data-tab="tab2">售后包裹处理表</button>
+            <button class="tab-btn px-4 py-2 rounded-lg font-medium bg-gray-200" data-tab="tab3">争议件和收费表</button>
+            <button class="tab-btn px-4 py-2 rounded-lg font-medium bg-gray-200" data-tab="tab4">滞留库存&无名包裹</button>
+            <button class="tab-btn px-4 py-2 rounded-lg font-medium bg-gray-200" data-tab="tab5">租用服务设备寄回登记</button>
+            <button class="tab-btn px-4 py-2 rounded-lg font-medium bg-gray-200" data-tab="tab6">跟单客服表</button>
+            <button class="tab-btn px-4 py-2 rounded-lg font-medium bg-gray-200" data-tab="tab7">顺丰京东理赔</button>
+        </div>
+
+        <!-- Tab 1: 仓库&质检移交设备 -->
+        <div id="tab1" class="tab-content active">
+            <div class="date-filter mb-6">
+                <button class="date-btn active" data-range="all">全部时间</button>
+                <button class="date-btn" data-range="today">今天</button>
+                <button class="date-btn" data-range="yesterday">昨天</button>
+                <button class="date-btn" data-range="7days">最近7天</button>
+                <button class="date-btn" data-range="30days">最近30天</button>
+                <button class="date-btn" data-range="month">本月</button>
+                <button class="date-btn" data-range="lastmonth">上月</button>
+                <input type="date" id="customStart1" class="px-3 py-1 border rounded">
+                <span>至</span>
+                <input type="date" id="customEnd1" class="px-3 py-1 border rounded">
+                <button class="date-btn bg-blue-500 text-white" onclick="applyCustomDate(1)">应用</button>
+                <button class="date-btn" onclick="resetDate(1)">重置</button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div class="card metric-card">
+                    <div class="metric-value" id="tab1-total">0</div>
+                    <div class="metric-label">总登记数量</div>
+                </div>
+                <div class="card metric-card">
+                    <div class="metric-value" id="tab1-daily">0</div>
+                    <div class="metric-label">日均处理量</div>
+                </div>
+                <div class="card metric-card">
+                    <div class="metric-value" id="tab1-aftersale">0</div>
+                    <div class="metric-label">移交售后组数量</div>
+                </div>
+                <div class="card metric-card">
+                    <div class="metric-value" id="tab1-aftersale-pct">0%</div>
+                    <div class="metric-label">售后组占比</div>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="card">
+                    <h3 class="text-lg font-semibold mb-4">场景划分</h3>
+                    <div class="chart-container"><canvas id="chart1-scene"></canvas></div>
+                </div>
+                <div class="card">
+                    <h3 class="text-lg font-semibold mb-4">问题分类</h3>
+                    <div class="chart-container"><canvas id="chart1-problem"></canvas></div>
+                </div>
+                <div class="card">
+                    <h3 class="text-lg font-semibold mb-4">原设备处理方式</h3>
+                    <div class="chart-container"><canvas id="chart1-handling"></canvas></div>
+                </div>
+                <div class="card">
+                    <h3 class="text-lg font-semibold mb-4">日均处理量趋势</h3>
+                    <div class="chart-container"><canvas id="chart1-trend"></canvas></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 2: 售后包裹处理表 -->
+        <div id="tab2" class="tab-content">
+            <div class="date-filter mb-6">
+                <button class="date-btn active" data-range="all">全部时间</button>
+                <button class="date-btn" data-range="today">今天</button>
+                <button class="date-btn" data-range="yesterday">昨天</button>
+                <button class="date-btn" data-range="7days">最近7天</button>
+                <button class="date-btn" data-range="30days">最近30天</button>
+                <button class="date-btn" data-range="month">本月</button>
+                <button class="date-btn" data-range="lastmonth">上月</button>
+                <input type="date" id="customStart2" class="px-3 py-1 border rounded">
+                <span>至</span>
+                <input type="date" id="customEnd2" class="px-3 py-1 border rounded">
+                <button class="date-btn bg-blue-500 text-white" onclick="applyCustomDate(2)">应用</button>
+                <button class="date-btn" onclick="resetDate(2)">重置</button>
+            </div>
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div class="card metric-card">
+                    <div class="metric-value" id="tab2-total">0</div>
+                    <div class="metric-label">总登记数量</div>
+                </div>
+                <div class="card metric-card">
+                    <div class="metric-value" id="tab2-processed">0</div>
+                    <div class="metric-label">总处理量</div>
+                </div>
+                <div class="card metric-card">
+                    <div class="metric-value" id="tab2-daily">0</div>
+                    <div class="metric-label">日均处理量</div>
+                </div>
+                <div class="card metric-card">
+                    <div class="metric-value" id="tab2-timeliness">-</div>
+                    <div class="metric-label">平均寄出时效 (天)</div>
+                </div>
+            </div>
+                    <div class="metric-label">平均寄出时效(天)</div>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div class="card metric-card bg-blue-50">
+                    <div class="metric-value text-blue-600" id="tab2-unpack-today">0</div>
+                    <div class="metric-label">拆包登记总量</div>
+                </div>
+                <div class="card metric-card bg-yellow-50">
+                    <div class="metric-value text-yellow-600" id="tab2-unpack-remaining">0</div>
+                    <div class="metric-label">当日剩余未拆包设备</div>
+                </div>
+                <div class="card metric-card bg-green-50">
+                    <div class="metric-value text-green-600" id="tab2-pack-today">0</div>
+                    <div class="metric-label">打包寄出总量</div>
+                </div>
+                <div class="card metric-card bg-red-50">
+                    <div class="metric-value text-red-600" id="tab2-pack-remaining">0</div>
+                    <div class="metric-label">当日剩余已拆但未处理量</div>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="card">
+                    <h3 class="text-lg font-semibold mb-4">品牌分布</h3>
+                    <div class="chart-container"><canvas id="chart2-brand"></canvas></div>
+                </div>
+                <div class="card">
+                    <h3 class="text-lg font-semibold mb-4">处理方式</h3>
+                    <div class="chart-container"><canvas id="chart2-method"></canvas></div>
+                </div>
+                <div class="card md:col-span-2">
+                    <h3 class="text-lg font-semibold mb-4">寄出时效分析（天）</h3>
+                    <div class="chart-container"><canvas id="chart2-timeliness"></canvas></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 3: 争议件和收费表 -->
+        <div id="tab3" class="tab-content">
+            <div class="date-filter mb-6">
+                <button class="date-btn active" data-range="all">全部时间</button>
+                <button class="date-btn" data-range="today">今天</button>
+                <button class="date-btn" data-range="yesterday">昨天</button>
+                <button class="date-btn" data-range="7days">最近7天</button>
+                <button class="date-btn" data-range="30days">最近30天</button>
+                <button class="date-btn" data-range="month">本月</button>
+                <button class="date-btn" data-range="lastmonth">上月</button>
+                <input type="date" id="customStart3" class="px-3 py-1 border rounded">
+                <span>至</span>
+                <input type="date" id="customEnd3" class="px-3 py-1 border rounded">
+                <button class="date-btn bg-blue-500 text-white" onclick="applyCustomDate(3)">应用</button>
+                <button class="date-btn" onclick="resetDate(3)">重置</button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div class="card metric-card">
+                    <div class="metric-value" id="tab3-total">0</div>
+                    <div class="metric-label">总登记数量</div>
+                </div>
+                <div class="card metric-card">
+                    <div class="metric-value" id="tab3-daily">0</div>
+                    <div class="metric-label">日均处理量</div>
+                </div>
+                <div class="card metric-card">
+                    <div class="metric-value" id="tab3-paid">0</div>
+                    <div class="metric-label">已付款订单数</div>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="card">
+                    <h3 class="text-lg font-semibold mb-4">商家分布</h3>
+                    <div class="chart-container"><canvas id="chart3-merchant"></canvas></div>
+                </div>
+                <div class="card">
+                    <h3 class="text-lg font-semibold mb-4">是否付款统计</h3>
+                    <div class="chart-container"><canvas id="chart3-payment"></canvas></div>
+                </div>
+                <div class="card md:col-span-2">
+                    <h3 class="text-lg font-semibold mb-4">已付款订单检测详情</h3>
+                    <div class="overflow-x-auto">
+                        <table id="table3-details">
+                            <thead><tr><th>日期</th><th>商家</th><th>订单号</th><th>型号</th><th>争议原因</th></tr></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 4: 滞留库存&无名包裹 -->
+        <div id="tab4" class="tab-content">
+            <div class="date-filter mb-6">
+                <button class="date-btn active" data-range="all">全部时间</button>
+                <button class="date-btn" data-range="today">今天</button>
+                <button class="date-btn" data-range="yesterday">昨天</button>
+                <button class="date-btn" data-range="7days">最近7天</button>
+                <button class="date-btn" data-range="30days">最近30天</button>
+                <button class="date-btn" data-range="month">本月</button>
+                <button class="date-btn" data-range="lastmonth">上月</button>
+                <input type="date" id="customStart4" class="px-3 py-1 border rounded">
+                <span>至</span>
+                <input type="date" id="customEnd4" class="px-3 py-1 border rounded">
+                <button class="date-btn bg-blue-500 text-white" onclick="applyCustomDate(4)">应用</button>
+                <button class="date-btn" onclick="resetDate(4)">重置</button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div class="card metric-card">
+                    <div class="metric-value" id="tab4-total">0</div>
+                    <div class="metric-label">总登记数量</div>
+                </div>
+                <div class="card metric-card">
+                    <div class="metric-value" id="tab4-daily">0</div>
+                    <div class="metric-label">日均处理量</div>
+                </div>
+            </div>
+            <div class="card">
+                <h3 class="text-lg font-semibold mb-4">明细数据</h3>
+                <div class="overflow-x-auto">
+                    <table id="table4-details">
+                        <thead><tr><th>日期</th><th>登记人</th><th>仓库</th><th>类型</th><th>详情</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 5: 租用服务设备寄回登记 -->
+        <div id="tab5" class="tab-content">
+            <div class="date-filter mb-6">
+                <button class="date-btn active" data-range="all">全部时间</button>
+                <button class="date-btn" data-range="today">今天</button>
+                <button class="date-btn" data-range="yesterday">昨天</button>
+                <button class="date-btn" data-range="7days">最近7天</button>
+                <button class="date-btn" data-range="30days">最近30天</button>
+                <button class="date-btn" data-range="month">本月</button>
+                <button class="date-btn" data-range="lastmonth">上月</button>
+                <input type="date" id="customStart5" class="px-3 py-1 border rounded">
+                <span>至</span>
+                <input type="date" id="customEnd5" class="px-3 py-1 border rounded">
+                <button class="date-btn bg-blue-500 text-white" onclick="applyCustomDate(5)">应用</button>
+                <button class="date-btn" onclick="resetDate(5)">重置</button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div class="card metric-card">
+                    <div class="metric-value" id="tab5-total">0</div>
+                    <div class="metric-label">总登记数量</div>
+                </div>
+                <div class="card metric-card">
+                    <div class="metric-value" id="tab5-registrants">0</div>
+                    <div class="metric-label">登记人数据</div>
+                </div>
+                <div class="card metric-card">
+                    <div class="metric-value" id="tab5-daily">0</div>
+                    <div class="metric-label">日均处理量</div>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div class="card">
+                    <h3 class="text-lg font-semibold mb-4">是否寄回平台</h3>
+                    <div class="chart-container"><canvas id="chart5-return"></canvas></div>
+                </div>
+                <div class="card">
+                    <h3 class="text-lg font-semibold mb-4">登记人统计</h3>
+                    <div class="chart-container"><canvas id="chart5-registrant"></canvas></div>
+                </div>
+            </div>
+            <div class="card mb-6">
+                <h3 class="text-lg font-semibold mb-4">
+                    <span class="alert-badge">预警</span>
+                    超2天未跟进（需跟进总数: <span id="tab5-alert-count">0</span>）
+                </h3>
+                <div class="overflow-x-auto">
+                    <table id="table5-alerts">
+                        <thead><tr><th>登记人</th><th>日期</th><th>商家</th><th>订单号</th><th>停留天数</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 6: 跟单客服表 -->
+        <div id="tab6" class="tab-content">
+            <div class="date-filter mb-6">
+                <button class="date-btn active" data-range="all">全部时间</button>
+                <button class="date-btn" data-range="today">今天</button>
+                <button class="date-btn" data-range="yesterday">昨天</button>
+                <button class="date-btn" data-range="7days">最近7天</button>
+                <button class="date-btn" data-range="30days">最近30天</button>
+                <button class="date-btn" data-range="month">本月</button>
+                <button class="date-btn" data-range="lastmonth">上月</button>
+                <input type="date" id="customStart6" class="px-3 py-1 border rounded">
+                <span>至</span>
+                <input type="date" id="customEnd6" class="px-3 py-1 border rounded">
+                <button class="date-btn bg-blue-500 text-white" onclick="applyCustomDate(6)">应用</button>
+                <button class="date-btn" onclick="resetDate(6)">重置</button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-1 gap-4 mb-6">
+                <div class="card metric-card">
+                    <div class="metric-value" id="tab6-total">0</div>
+                    <div class="metric-label">总登记数量</div>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="card">
+                    <h3 class="text-lg font-semibold mb-4">型号分布</h3>
+                    <div class="chart-container"><canvas id="chart6-model"></canvas></div>
+                </div>
+                <div class="card">
+                    <h3 class="text-lg font-semibold mb-4">供应商分布</h3>
+                    <div class="chart-container"><canvas id="chart6-supplier"></canvas></div>
+                </div>
+                <div class="card">
+                    <h3 class="text-lg font-semibold mb-4">一次跟进处理方式</h3>
+                    <div class="chart-container"><canvas id="chart6-firstmethod"></canvas></div>
+                </div>
+                <div class="card">
+                    <h3 class="text-lg font-semibold mb-4">最终处理结果</h3>
+                    <div class="chart-container"><canvas id="chart6-result"></canvas></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 7: 顺丰京东理赔 -->
+        <div id="tab7" class="tab-content">
+            <div class="date-filter mb-6">
+                <button class="date-btn active" data-range="all">全部时间</button>
+                <button class="date-btn" data-range="today">今天</button>
+                <button class="date-btn" data-range="yesterday">昨天</button>
+                <button class="date-btn" data-range="7days">最近7天</button>
+                <button class="date-btn" data-range="30days">最近30天</button>
+                <button class="date-btn" data-range="month">本月</button>
+                <button class="date-btn" data-range="lastmonth">上月</button>
+                <input type="date" id="customStart7" class="px-3 py-1 border rounded">
+                <span>至</span>
+                <input type="date" id="customEnd7" class="px-3 py-1 border rounded">
+                <button class="date-btn bg-blue-500 text-white" onclick="applyCustomDate(7)">应用</button>
+                <button class="date-btn" onclick="resetDate(7)">重置</button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div class="card metric-card">
+                    <div class="metric-value" id="tab7-total">0</div>
+                    <div class="metric-label">总登记量</div>
+                </div>
+                <div class="card metric-card">
+                    <div class="metric-value" id="tab7-itemamount">¥0</div>
+                    <div class="metric-label">物品金额</div>
+                </div>
+                <div class="card metric-card">
+                    <div class="metric-value" id="tab7-claimamount">¥0</div>
+                    <div class="metric-label">赔付单金额</div>
+                </div>
+                <div class="card metric-card">
+                    <div class="metric-value text-red-600" id="tab7-loss">¥0</div>
+                    <div class="metric-label">亏损金额</div>
+                </div>
+            </div>
+            <div class="card">
+                <h3 class="text-lg font-semibold mb-4">亏损情况分析</h3>
+                <div class="chart-container"><canvas id="chart7-loss"></canvas></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="data/all-data.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

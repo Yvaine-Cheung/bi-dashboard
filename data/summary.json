@@ -1,0 +1,53 @@
+{
+  "syncTime": "2026-07-24T05:36:54.850Z",
+  "sheets": [
+    {
+      "name": "仓库&质检移交设备",
+      "id": "kgqie6hm",
+      "rowCount": 4880,
+      "file": "仓库_质检移交设备.json"
+    },
+    {
+      "name": "售后包裹处理表",
+      "id": "st-edff09df-37873",
+      "rowCount": 6709,
+      "file": "售后包裹处理表.json"
+    },
+    {
+      "name": "争议件和收费表",
+      "id": "st-81e44a55-83006",
+      "rowCount": 279,
+      "file": "争议件和收费表.json"
+    },
+    {
+      "name": "滞留库存&无名包裹",
+      "id": "st-edff09df-36753",
+      "rowCount": 191,
+      "file": "滞留库存_无名包裹.json"
+    },
+    {
+      "name": "租用服务设备寄回登记",
+      "id": "st-76c29fa1-76757",
+      "rowCount": 995,
+      "file": "租用服务设备寄回登记.json"
+    },
+    {
+      "name": "跟单客服表",
+      "id": "st-edff09df-36459",
+      "rowCount": 942,
+      "file": "跟单客服表.json"
+    },
+    {
+      "name": "顺丰京东理赔",
+      "id": "st-7fb09d42-27398",
+      "rowCount": 14,
+      "file": "顺丰京东理赔.json"
+    },
+    {
+      "name": "拆包&打包",
+      "id": "s1",
+      "rowCount": 367,
+      "file": "拆包_打包.json"
+    }
+  ]
+}
