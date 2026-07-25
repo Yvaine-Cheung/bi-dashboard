@@ -445,10 +445,20 @@ function renderTab2() {
         document.getElementById('tab2-unpack-today').textContent = totalUnpack;
         document.getElementById('tab2-pack-today').textContent = totalPack;
         
-        // 当日剩余未拆包设备量、当日剩余已拆但未处理量 - 显示最新一天的数据
-        const latestData = unpackData[unpackData.length - 1];
-        document.getElementById('tab2-unpack-remaining').textContent = latestData[2] || '0';
-        document.getElementById('tab2-pack-remaining').textContent = latestData[4] || '0';
+        // 当日剩余未拆包设备量、当日剩余已拆但未处理量、总剩余待寄出设备 - 显示最新有数据的行
+        let latestData = null;
+        for (let i = unpackData.length - 1; i >= 0; i--) {
+            if (unpackData[i][0] && unpackData[i][0].trim() !== '') {
+                latestData = unpackData[i];
+                break;
+            }
+        }
+        
+        if (latestData) {
+            document.getElementById('tab2-unpack-remaining').textContent = latestData[2] || '0';
+            document.getElementById('tab2-pack-remaining').textContent = latestData[4] || '0';
+            document.getElementById('tab2-total-remaining').textContent = latestData[5] || '0';
+        }
     }
     
     // 品牌分布（第6列）
