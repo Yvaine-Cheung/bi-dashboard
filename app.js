@@ -133,7 +133,7 @@ function parseDate(str) {
         return new Date(parseInt(match[1]), parseInt(match[2]) - 1, parseInt(match[3]));
     }
     // 处理 "2026年7月28日" 格式（带年份）
-    const matchYear = str.match(/(\d{4})年 (\d{1,2})月 (\d{1,2})日/);
+    const matchYear = str.match(/(\d{4})年(\d{1,2})月(\d{1,2})日/);
     if (matchYear) {
         return new Date(parseInt(matchYear[1]), parseInt(matchYear[2]) - 1, parseInt(matchYear[3]));
     }
