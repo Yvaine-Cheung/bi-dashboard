@@ -132,7 +132,12 @@ function parseDate(str) {
     if (match) {
         return new Date(parseInt(match[1]), parseInt(match[2]) - 1, parseInt(match[3]));
     }
-    // 处理 "7 月 23 日" 格式（可能有空格），无年份统一用当前年份
+    // 处理 "2026年7月28日" 格式（带年份）
+    const matchYear = str.match(/(\d{4})年 (\d{1,2})月 (\d{1,2})日/);
+    if (matchYear) {
+        return new Date(parseInt(matchYear[1]), parseInt(matchYear[2]) - 1, parseInt(matchYear[3]));
+    }
+    // 处理 "7 月 23 日" 格式（无年份，用当前年份）
     const match2 = str.match(/(\d{1,2})\s*月\s*(\d{1,2})\s*日/);
     if (match2) {
         return new Date(new Date().getFullYear(), parseInt(match2[1]) - 1, parseInt(match2[2]));
