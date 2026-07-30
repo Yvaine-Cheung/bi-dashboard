@@ -14,8 +14,8 @@ const DATA_DIR = path.join(__dirname, 'data');
 
 // 工作表配置 - 包含表头行信息
 const SHEETS = [
-    { id: 'kgqie6hm', name: '仓库&质检移交设备', lastRow: 4930, lastCol: 'AQ', headerRow: 2 },
-    { id: 'st-edff09df-37873', name: '售后包裹处理表', lastRow: 6777, lastCol: 'AW', headerRow: 2 },
+    { id: 'kgqie6hm', name: '仓库&质检移交设备', lastRow: 5098, lastCol: 'AQ', headerRow: 2 },
+    { id: 'st-edff09df-37873', name: '售后包裹处理表', lastRow: 7120, lastCol: 'AW', headerRow: 2 },
     { id: 'st-81e44a55-83006', name: '争议件和收费表', lastRow: 283, lastCol: 'P', headerRow: 2 },
     { id: 'st-edff09df-36753', name: '滞留库存&无名包裹', lastRow: 194, lastCol: 'R', headerRow: 3 },
     { id: 'st-76c29fa1-76757', name: '租用服务设备寄回登记', lastRow: 1001, lastCol: 'I', headerRow: 1 },
